@@ -67,7 +67,6 @@ class Box
 
     create-build: ~>
         create-target("#{@build-dir}", "", "mkdir -p #{@build-dir}")
-        create-phony-target("#{@build-dir}-clean", "", "@rm -rf #{@build-dir}")
 
     get-tmp: ~>
         @tmp = @tmp + 1
@@ -226,6 +225,10 @@ class Box
         names = @unwrap-objects(array)
         source-build-targets = (names.map (.build-target)) * ' '
         create-phony-target(name, source-build-targets)
+        finfo = {}
+        finfo.build-target = "#name"
+        return finfo
+
 
 
 
@@ -254,14 +257,14 @@ parse-watch = (b) ->
         if event == 'changed'
             if filepath in deps
                 log "Changed file #filepath"
-                shelljs.exec 'make', ->
+                shelljs.exec 'make all', ->
                     log "done"
             else
                 log "Other #filepath"
         else
             log "Added/removed file #filepath"
             parse b, -> 
-                shelljs.exec 'make', ->
+                shelljs.exec 'make all', ->
                     log "done"
 
 

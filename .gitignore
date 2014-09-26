@@ -48,3 +48,9 @@ test/.build/x.js
 test/.build/m.css
 
 test/.build/y.js
+
+test/nmake.js
+
+test/server/js/src/server/x.js
+
+test/server/js/src/server/y.js
