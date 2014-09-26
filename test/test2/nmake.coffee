@@ -1,8 +1,8 @@
 #!/usr/bin/env coffee
 
-{ parse, parseWatch } = require('../index')
+{ parse, parseWatch } = require('../../index')
 
-parse ->
+parseWatch ->
     @collect "all", -> [
         @collect "client", -> [
                 @dest "_site/assets/css/client.css", ->

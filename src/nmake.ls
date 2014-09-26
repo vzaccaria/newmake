@@ -13,7 +13,6 @@ debug = require('debug')('nmake:core')
 _.mixin(_.str.exports());
 _.str.include('Underscore.string', 'string');
 
-log = debug
 
 targets = []
 phony-targets = []
@@ -245,6 +244,8 @@ parse = (b, cb) ->
         fs.writeFile('makefile', makefile, cb)
 
 parse-watch = (b) ->
+    {log, add-changed-file} = require('./screen')()
+
     parse(b)
     Gaze = require('gaze').Gaze;
     gaze = new Gaze('**/*.*');
@@ -256,15 +257,16 @@ parse-watch = (b) ->
         log "#event #filepath"
         if event == 'changed'
             if filepath in deps
-                log "Changed file #filepath"
-                shelljs.exec 'make all', ->
+                # log "Changed file #filepath"
+                add-changed-file filepath
+                shelljs.exec 'make all', {+silent}, ->
                     log "done"
             else
-                log "Other #filepath"
+                log "Other event on #filepath"
         else
             log "Added/removed file #filepath"
             parse b, -> 
-                shelljs.exec 'make all', ->
+                shelljs.exec 'make all', {+silent}, ->
                     log "done"
 
 
