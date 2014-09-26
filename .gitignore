@@ -26,3 +26,25 @@ node_modules
 
 # Users Environment Variables
 .lock-wscript
+
+test/_site/assets/css/client.css
+
+test/_site/assets/js/client.js
+
+test/_site/images/_site/images/src/assets/images/image.png
+
+test/_site/images/src/assets/images/image.png
+
+test/.build/concat-tmp0.css
+
+test/.build/concat-tmp1.js
+
+test/.build/entry.js
+
+test/.build/image.png
+
+test/.build/x.js
+
+test/.build/m.css
+
+test/.build/y.js
