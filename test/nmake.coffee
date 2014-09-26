@@ -6,10 +6,10 @@ parse ->
     @collect "client", -> [
             @dest "_site/assets/css/client.css", ->
                 @concatcss ->
-                    @less "**/*.less"
+                    @less "src/**/*.less"
 
-            @toDir "_site/images", ->
-                @glob 'assets/**/*.png'
+            @toDir "_site/assets/images", { strip: 'src/assets/images' },  ->
+                @glob 'src/assets/**/*.png'
 
             @dest "_site/assets/js/client.js", ->
                 @concatjs -> 
@@ -17,7 +17,9 @@ parse ->
             ]
 
     @collect "server", -> 
-        @toDir "server/js", ->
+        @toDir "server/js", { strip: 'src/server' },  ->
             @livescript "src/server/**/*.ls"
+
+    @cleanupTargets()
         
 

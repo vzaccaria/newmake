@@ -1,49 +1,22 @@
 #!/usr/bin/env lsc
 
-glob = require 'glob'
-_    = require 'underscore'
-path = require 'path'
-fs   = require 'fs'
+_       = require('underscore')
+_.str   = require('underscore.string');
+glob    = require 'glob'
+_       = require 'underscore'
+path    = require 'path'
+fs      = require 'fs'
 shelljs = require 'shelljs'
-blessed = require 'blessed'
 
+debug = require('debug')('nmake:core')
 
-# screen = blessed.screen()
+_.mixin(_.str.exports());
+_.str.include('Underscore.string', 'string');
 
-# box-data = {
-#   top: '0%',
-#   left: '50%',
-#   width: '50%',
-#   height: '100%',
-#   tags: true,
-#   border: {
-#     type: 'line'
-#   },
-#   style: {
-#     fg: 'white',
-#     bg: 'black',
-#     border: {
-#       fg: '#f0f0f0'
-#     },
-#     hover: {
-#       bg: 'green'
-#     }
-#   }
-# }
-
-# box = blessed.box(box-data)
-# box.key 'x', ->
-#     process.exit()
-
-# screen.append(box)
-
-# log = -> 
-#     box.setContent(it)
-#     screen.render()
-
-log = console.log 
+log = debug
 
 targets = []
+phony-targets = []
 deps = []
 
 makefile = ""
@@ -67,13 +40,13 @@ create-target = (name, deps, action) ->
         targets.push(name)
 
 create-phony-target = (name, deps, action) ->
-    if not (name in targets)
+    if not (name in phony-targets)
         add-to-makefile ".PHONY : #name"
         add-to-makefile "#name: #deps" 
         for d in &[2 to]
             add-to-makefile "\t#d"
         add-to-makefile ""
-        targets.push(name)
+        phony-targets.push(name)
 
 
 class Box 
@@ -81,6 +54,10 @@ class Box
         @tmp=0
         @dep-dirs=[]
         @build-dir = ".build"
+
+    cleanup-targets: ~>
+        tgts = targets * ' '
+        create-target('clean', "", "rm -rf #{tgts}")
 
     prepare-dir: ~>
         dir = path.dirname(it)
@@ -109,14 +86,25 @@ class Box
         return obj
 
 
-    to-dir: (dname, array) ~>
+    to-dir: (dname, options, array) ~>
+        if not options.strip? 
+            array = options 
+            options = {}
+
+        debug JSON.stringify(options)
+
         obj = @unwrap-objects(array)
         for o in obj
             if o.orig-dir != "(NONE)"
+                if options?.strip?
+                    debug "Stripping #{o.orig-dir}"
+                    o.orig-dir = o.orig-dir.replace(options.strip, '')
+
                 create-target("#dname/#{o.orig-dir}/#{o.dest-name}", 
                           "#{o.build-target}", 
                           "@mkdir -p #dname/#{o.orig-dir}", 
                           "cp #{o.build-target} #dname/#{o.orig-dir}")
+
                 o.build-target = "#dname/#{o.orig-dir}/#{o.dest-name}"
             else
                 console.error "Skipping #{o.build-target} 'cause no original dir can be found"
@@ -245,6 +233,7 @@ parse = (b, cb) ->
     makefile := ""
     deps := []
     targets := []
+    phony-targets := []
     bb = new Box
     b.apply(bb)
     if not cb?
