@@ -1,0 +1,22 @@
+{
+  "name": "newmake",
+  "version": "0.0.0",
+  "description": "Another attempt at a simple build system",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vzaccaria/newmake.git"
+  },
+  "keywords": [
+    "build"
+  ],
+  "author": "Vittorio Zaccaria",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vzaccaria/newmake/issues"
+  },
+  "homepage": "https://github.com/vzaccaria/newmake"
+}
