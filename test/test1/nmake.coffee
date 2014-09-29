@@ -22,6 +22,8 @@ parse ->
                 @livescript "src/server/**/*.ls"
         ]
 
-    @cleanupTargets()
+    @collect "clean", -> [
+        @removeAllTargets()
+    ]
         
 

@@ -14,14 +14,26 @@ _.mixin(_.str.exports());
 _.str.include('Underscore.string', 'string');
 
 
-targets = []
-phony-targets = []
-deps = []
+targets        = []
+phony-targets  = []
+deps           = []
+clean-targets  = []
+notify-targets = []
+watch-sources  = []
+notify-strip-string = ""
+
 
 makefile = ""
 
 reset-makefile = ->
     makefile := ".DEFAULT_GOAL := all\n"
+    deps := []
+    targets := []
+    phony-targets := []
+    clean-targets := []
+    notify-targets := []
+    watch-sources := []
+    notify-strip-string := ""
 
 add-to-makefile = (line) ->
     makefile := makefile + "\n" + line
@@ -45,11 +57,7 @@ class Box
         @dep-dirs=[]
         @build-dir = ".build"
 
-    create-build-target: ~>
-        @create-target-raw("#{@build-dir}", "", "mkdir -p #{@build-dir}")
-
     create-target: (name, deps, action) ->
-        @create-build-target()
         @create-target-raw.apply(@, &)
 
     create-target-raw: (name, deps, action) ~>
@@ -69,9 +77,22 @@ class Box
             add-to-makefile ""
             phony-targets.push(name)
 
-    cleanup-targets: ~>
+    on-clean: (cmd) ~>
+        name = "clean-#{@get-tmp()}"
+        @create-phony-target(name, "", cmd)
+        clean-targets.push(name)
+        return { build-target: name }
+
+    remove-all-targets: ~>
         tgts = targets * ' '
-        @create-target('clean', "", "rm -rf #{tgts}")
+        return [
+            @on-clean "rm -rf #{tgts}"
+            @on-clean "rm -rf #{@build-dir}"
+            @on-clean "mkdir -p #{@build-dir}"
+        ]
+
+    gen-clean-rule: ~>
+        @create-phony-target('clean', (clean-targets * ' '))
 
     prepare-dir: ~>
         dir = path.dirname(it)
@@ -91,6 +112,9 @@ class Box
 
         names = _.flatten(names)    
 
+    notify-strip: (s) ~>
+        notify-strip-string := s
+
     get-build-targets: (array) ~>
         original-files = @unwrap-objects(array)
         source-build-targets = original-files.map (.build-target)
@@ -109,7 +133,7 @@ class Box
 
         newext ?= finfo.ext
         finfo.dest-name    = "#{finfo.orig-name}#newext"
-        finfo.build-target = "#{@build-dir}/#{finfo.dest-name}"
+        finfo.build-target = "#{@build-dir}/#{@get-tmp()}-#{finfo.dest-name}"
         return finfo
 
     create-reduction-product: (original-file-name) ~>
@@ -120,6 +144,7 @@ class Box
 
         finfo.dest-name    = "#{finfo.orig-name}#{finfo.ext}"
         finfo.build-target = "#{@build-dir}/#{finfo.dest-name}"
+
         return finfo
 
     create-processed-product: (it, ext) ~>
@@ -146,6 +171,12 @@ class Box
         obj[0].build-target = dname
         return obj
 
+    notify: (body) ~>
+        obj = @unwrap-objects(body) 
+        for o in obj
+            notify-targets.push(o.build-target)
+        return obj
+
 
     to-dir: (dname, options, array) ~>
         if not options.strip? 
@@ -161,12 +192,16 @@ class Box
                     debug "Stripping #{o.orig-dir}"
                     o.orig-dir = o.orig-dir.replace(options.strip, '')
 
-                @create-target("#dname/#{o.orig-dir}/#{o.dest-name}", 
+
+                bt = path.normalize("#dname/#{o.orig-dir}/#{o.dest-name}")
+
+                @create-target(bt, 
                           "#{o.build-target}", 
                           "@mkdir -p #dname/#{o.orig-dir}", 
-                          "cp #{o.build-target} #dname/#{o.orig-dir}")
+                          "cp #{o.build-target} $@")
 
-                o.build-target = "#dname/#{o.orig-dir}/#{o.dest-name}"
+                o.build-target = bt 
+                
             else
                 console.error "Skipping #{o.build-target} 'cause no original dir can be found"
                 console.error "You might use `dest` for those files."
@@ -183,11 +218,6 @@ class Box
     compile-files: (action, ext, g, local-deps) ~>
         files = glob.sync(g)
 
-        # if _.is-array(files) and local-deps?
-        #     error files
-        #     errorlocal-deps 
-        #     throw "Sorry, you can't specify an array of files with dependencies"
-
         if local-deps? 
             local-deps := glob.sync(local-deps)
         else 
@@ -198,7 +228,7 @@ class Box
             finfo = @create-leaf-product(it, ext)
             if not (it in dds)
                 dds.push(it)
-            @create-target("#{finfo.build-target}", "#{dds * ' '} #{@build-dir}", action.bind(@)(finfo))
+            @create-target("#{finfo.build-target}", "#{dds * ' '}", action.bind(@)(finfo))
             add-deps(it)        
             return finfo                                          
 
@@ -214,31 +244,9 @@ class Box
             finfo = @create-processed-product(it, ext)
             @create-target(finfo.build-target, finfo.build-target, action.bind(@)(finfo))
 
-    concat-ext: (ext, array) ~>
-        @reduce-files("cat $^ > $@", "concat-tmp", ext, array)
+    add-plugin: (name, action) ~>
+        @[name] = action.bind(@)
 
-    concatjs: ~>
-        @concat-ext \js, it
-
-    concatcss: ~>
-        @concat-ext \css, it
-
-    minifyjs: (array) ~>
-        @process-files((-> "minifyjs -m -i #{it.build-target} > $@"), ".min.js", array)
-        
-    livescript: (g) ~>
-        @compile-files( (-> "lsc -p -c #{it.orig-complete} > #{it.build-target}" ) , ".js", g)
-
-    less: (g, deps) ~>
-        @compile-files( (-> "lessc #{it.orig-complete} #{it.build-target}" ), ".css", g, deps )
-
-    jade: (g, deps) ~>
-        @compile-files( (-> "jade #{it.orig-complete} -o #{@build-dir}"), ".html", g, deps )
-
-    glob: (g, deps) ~>
-        @compile-files( (-> "cp #{it.orig-complete} #{it.build-target}"), undefined, g)
-
-    copy: glob
 
     copy-target: (name) ~>
         finfo = {}
@@ -253,47 +261,96 @@ class Box
         return finfo
 
 parse = (b, cb) ->
+    debug "Generating makefile"
     reset-makefile()
-    deps := []
-    targets := []
-    phony-targets := []
+
     bb = new Box
+    require('./plugin').apply(bb)
     b.apply(bb)
     if not cb?
         fs.writeFileSync('makefile', makefile)
     else
         fs.writeFile('makefile', makefile, cb)
 
-parse-watch = (b) ->
-    {log, add-changed-file} = require('./screen')()
+    watch-sources := deps 
 
-    log "Generating makefile"
-    parse(b)
-    shelljs.exec 'make all', {+silent}, ->
-        log "First build completed"
+watch-source-files = (cb) ->
+        debug "First build completed"
         Gaze = require('gaze').Gaze;
-        gaze = new Gaze('**/*.*');
+
+        watch-sources := watch-sources.map ~>
+            path.resolve(it)
+
+        gaze = new Gaze(watch-sources);
 
         gaze.on 'ready', ->
-            log "Watching.."
+            debug "Watching sources."
+            debug watch-sources 
 
-        gaze.on 'all', (event, filepath) ->
-            
-            log "Received #event for #filepath"
+        gaze.on 'all', cb
+
+watch-dest-files = (cb) ->
+        debug "First build completed"
+        Gaze = require('gaze').Gaze;
+
+        notify-targets := notify-targets.map ~>
+            path.resolve(it)
+
+        gaze = new Gaze(notify-targets);
+
+        gaze.on 'ready', ->
+            debug "Watching destinations."
+            debug watch-sources 
+
+        gaze.on 'all', cb
+
+parse-watch = (b) ->
+
+    parse(b)
+
+    notify-targets := notify-targets.map ~>
+        path.resolve(it) 
+
+    start-livereload()    
+
+    shelljs.exec 'make all -j', {+silent}, ->
+        watch-source-files (event, filepath) ->
+            debug "Received #event for #filepath"
             if event == 'changed'
-                if filepath in deps
-                    # log "Changed file #filepath"
-                    add-changed-file filepath
-                    shelljs.exec 'make all', {+silent}, ->
-                        log "Make done"
-                else
-                    log "Added/changed #filepath"
+                shelljs.exec 'make all -j',  ->
             else
-                log "Added/changed file #filepath"
+                debug "Added/changed file #filepath"
                 parse b, -> 
-                    shelljs.exec 'make all', {+silent}, ->
-                        log "Make done"
+                    shelljs.exec 'make all -j', {+silent}, ->
+                        debug "Make done"
 
+        watch-dest-files (event, filepath) ->
+            notify-change filepath
+
+
+
+
+#  _ _                    _                 _ 
+# | (_)_   _____ _ __ ___| | ___   __ _  __| |
+# | | \ \ / / _ \ '__/ _ \ |/ _ \ / _` |/ _` |
+# | | |\ V /  __/ | |  __/ | (_) | (_| | (_| |
+# |_|_| \_/ \___|_|  \___|_|\___/ \__,_|\__,_|
+
+
+LIVERELOAD_PORT = 35729;
+
+var lr
+start-livereload = ->
+   lr := require('tiny-lr')()
+   lr.listen(LIVERELOAD_PORT)
+
+notifyChange = (path, cb) ->
+  fileName = require('path').relative(notify-strip-string, path)
+  debug("Notifying Livereload for a change to #fileName")
+  reset = ->
+     lr.changed body: { files: [fileName] }
+     cb?()
+  set-timeout reset, 1
 
 module.exports = {
     parse: parse
