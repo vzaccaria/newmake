@@ -23,7 +23,7 @@ plugins =
         @compile-files( (-> "jade -p #{it.orig-complete} < #{it.orig-complete} > #{it.build-target}"), ".html", g, deps )
 
     browserify: (g, deps) ->
-        @compile-files( (-> "browserify -t liveify #{it.orig-complete} -o #{it.build-target}"), ".js", g, deps)
+        @compile-files( (-> "browserify -t liveify --debug #{it.orig-complete} -o #{it.build-target}"), ".js", g, deps)
 
     exec: (cmd, ext, g, deps) ->
         @compile-files(cmd, ext, g, deps)

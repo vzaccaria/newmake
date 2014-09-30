@@ -177,7 +177,6 @@ class Box
             notify-targets.push(o.build-target)
         return obj
 
-
     to-dir: (dname, options, array) ~>
         if not options.strip? 
             array = options 
@@ -201,11 +200,25 @@ class Box
                           "cp #{o.build-target} $@")
 
                 o.build-target = bt 
-                
+
             else
                 console.error "Skipping #{o.build-target} 'cause no original dir can be found"
                 console.error "You might use `dest` for those files."
         return obj
+
+    forever-watch: (dname, opts) ->
+
+        if not opts?.root?
+            throw "Please specify a root for forever to work"
+
+        cmd = "forever #{opts.root} -w --watchDirectory #{dname}"
+
+        if opts?.ignore?
+            cmd = "#cmd --watchIgnore #{opts.ignore}"
+
+        run-target = "run-#{@get-tmp()}"
+        @create-phony-target(run-target, "",  cmd)
+        return { build-target: run-target}
 
 
     #            _                        _ 
@@ -229,7 +242,7 @@ class Box
             if not (it in dds)
                 dds.push(it)
             @create-target("#{finfo.build-target}", "#{dds * ' '}", action.bind(@)(finfo))
-            add-deps(it)        
+            add-deps(dds)        
             return finfo                                          
 
     reduce-files: (action, new-name, ext, array) ~>
@@ -260,6 +273,8 @@ class Box
         finfo.build-target = "#name"
         return finfo
 
+
+
 parse = (b, cb) ->
     debug "Generating makefile"
     reset-makefile()
@@ -284,8 +299,7 @@ watch-source-files = (cb) ->
         gaze = new Gaze(watch-sources);
 
         gaze.on 'ready', ->
-            debug "Watching sources."
-            debug watch-sources 
+            debug "Watching sources. #{watch-sources.length}"
 
         gaze.on 'all', cb
 
@@ -299,8 +313,7 @@ watch-dest-files = (cb) ->
         gaze = new Gaze(notify-targets);
 
         gaze.on 'ready', ->
-            debug "Watching destinations."
-            debug watch-sources 
+            debug "Watching destinations. #{notify-targets.length}"
 
         gaze.on 'all', cb
 
@@ -342,6 +355,7 @@ LIVERELOAD_PORT = 35729;
 var lr
 start-livereload = ->
    lr := require('tiny-lr')()
+   debug lr
    lr.listen(LIVERELOAD_PORT)
 
 notifyChange = (path, cb) ->
@@ -352,10 +366,84 @@ notifyChange = (path, cb) ->
      cb?()
   set-timeout reset, 1
 
-module.exports = {
-    parse: parse
-    parse-watch: parse-watch
-}
+
+_       = require('underscore')
+_.str   = require('underscore.string');
+moment  = require 'moment'
+fs      = require 'fs'
+color   = require('ansi-color').set
+os      = require('os')
+shelljs = require('shelljs')
+table   = require('ansi-color-table')
+
+_.mixin(_.str.exports());
+_.str.include('Underscore.string', 'string');
+
+name        = "newmake"
+description = "A tiny make helper"
+author      = "Vittorio Zaccaria"
+year        = "2014"
+
+info = (s) ->
+  console.log color('inf', 'bold')+": #s"
+
+err = (s) ->
+  console.log color('err', 'red')+": #s"
+
+warn = (s) ->
+  console.log color('wrn', 'yellow')+": #s"
+
+src = __dirname
+otm = if (os.tmpdir?) then os.tmpdir() else "/var/tmp"
+cwd = process.cwd()
+
+setup-temporary-directory = ->
+    name = "tmp_#{moment().format('HHmmss')}_tmp"
+    dire = "#{otm}/#{name}" 
+    shelljs.mkdir '-p', dire
+    return dire
+
+remove-temporary-directory = (dir) ->
+    shelljs.rm '-rf', dir 
+    
+usage-string = """
+
+#{color(name, \bold)}. #{description}
+(c) #author, #year
+
+Usage: #{name} [--option=V | -o V] 
+"""
+
+require! 'optimist'
+
+argv     = optimist.usage(usage-string,
+              watch:
+                alias: 'w', description: 'watch and rebuild', boolean: true, default: false
+
+              help:
+                alias: 'h', description: 'this help', default: false
+
+                         ).boolean(\h).argv
+
+
+if(argv.help)
+  optimist.showHelp()
+  process.exit(0)
+  return
+
+command = argv._
+
+if argv.watch
+    module.exports = {
+        parse: parse-watch
+    }
+else
+    module.exports = {
+        parse: parse
+    }
+
+
+
 
 
 
