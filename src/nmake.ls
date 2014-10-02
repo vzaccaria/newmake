@@ -14,16 +14,16 @@ _.mixin(_.str.exports());
 _.str.include('Underscore.string', 'string');
 
 
-targets        = []
-phony-targets  = []
-deps           = []
-clean-targets  = []
-notify-targets = []
-watch-sources  = []
+targets             = []
+phony-targets       = []
+deps                = []
+clean-targets       = []
+notify-targets      = []
+watch-sources       = []
 notify-strip-string = ""
-
-
-makefile = ""
+silent              = false
+command             = ""
+makefile            = ""
 
 reset-makefile = ->
     makefile := ".DEFAULT_GOAL := all\n"
@@ -76,6 +76,11 @@ class Box
                 add-to-makefile "\t#d"
             add-to-makefile ""
             phony-targets.push(name)
+
+    cmd-exec: (name, cmd) ~>
+        name = "#name-#{@get-tmp()}"
+        @create-phony-target(name, "", cmd)
+        return { build-target: name }
 
     on-clean: (cmd) ~>
         name = "clean-#{@get-tmp()}"
@@ -220,6 +225,8 @@ class Box
         @create-phony-target(run-target, "",  cmd)
         return { build-target: run-target}
 
+    add-plugin: (name, action) ~>
+        @[name] = action.bind(@)
 
     #            _                        _ 
     #   _____  _| |_ ___ _ __ _ __   __ _| |
@@ -257,10 +264,6 @@ class Box
             finfo = @create-processed-product(it, ext)
             @create-target(finfo.build-target, finfo.build-target, action.bind(@)(finfo))
 
-    add-plugin: (name, action) ~>
-        @[name] = action.bind(@)
-
-
     copy-target: (name) ~>
         finfo = {}
         finfo.build-target = "#name"
@@ -286,6 +289,11 @@ parse = (b, cb) ->
         fs.writeFileSync('makefile', makefile)
     else
         fs.writeFile('makefile', makefile, cb)
+
+    if command != ""
+        shelljs.exec "make #command -j", {silent: silent}, ->
+            debug "Make done"
+       
 
     watch-sources := deps 
 
@@ -326,15 +334,18 @@ parse-watch = (b) ->
 
     start-livereload()    
 
-    shelljs.exec 'make all -j', {+silent}, ->
+    if command == ""
+        command := all
+
+    shelljs.exec 'make all -j', {silent: silent}, ->
         watch-source-files (event, filepath) ->
             debug "Received #event for #filepath"
             if event == 'changed'
-                shelljs.exec 'make all -j',  ->
+                shelljs.exec "make #command -j",  ->
             else
                 debug "Added/changed file #filepath"
                 parse b, -> 
-                    shelljs.exec 'make all -j', {+silent}, ->
+                    shelljs.exec 'make #command -j -j', {+silent}, ->
                         debug "Make done"
 
         watch-dest-files (event, filepath) ->
@@ -420,6 +431,9 @@ argv     = optimist.usage(usage-string,
               watch:
                 alias: 'w', description: 'watch and rebuild', boolean: true, default: false
 
+              silent:
+                alias: 's', description: 'silent mode', boolean: true, default: false
+
               help:
                 alias: 'h', description: 'this help', default: false
 
@@ -431,7 +445,8 @@ if(argv.help)
   process.exit(0)
   return
 
-command = argv._
+command := argv._[0] if argv._?[0]?
+silent := argv.silent
 
 if argv.watch
     module.exports = {
