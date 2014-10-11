@@ -1,20 +1,33 @@
 #!/usr/bin/env coffee
 
-{ parse, parseWatch } = require('../../index')
+{ parse } = require('../../index')
 
-parseWatch ->
+a = (m) ->
+    "_site/assets/#{m}"
+
+s = (m) ->
+    "src/assets/#{m}"
+
+parse ->
     @collect "all", -> [
         @collect "client", -> [
-            @dest "_site/assets/css/client.css", ->
+
+            @dest a("css/client.css"), ->
                 @concatcss ->
                     @less "src/**/*.less"
 
-            @toDir "_site/assets/images", { strip: 'src/assets/images' },  ->
-                @glob 'src/assets/**/*.png'
+            @toDir a("images"), { strip: s('images') },  ->
+                @copy 'src/assets/**/*.png'
 
-            @dest "_site/assets/js/client.js", ->
+            @dest a("index.html"), ->
+                @copyTarget a("html/index.html")
+
+            @dest a("js/client.js"), ->
                 @concatjs -> 
-                    @livescript "src/assets/**/*.ls"
+                        @livescript s("**/*.ls")
+
+            @toDir a("html"), { strip: s("views") }, -> 
+                @jade s("views/index.jade"), a("views/base.jade")
             ]
 
         @collect "server", -> 
@@ -22,6 +35,15 @@ parseWatch ->
                 @livescript "src/server/**/*.ls"
     ]
 
-    @cleanupTargets()
-        
+    @collect "clean", -> [
+            @removeAllTargets()
+        ]        
 
+    @testServer = (it) -> 
+        @cmdExec("test", ("mocha -C --bail -t 5000 -R min #{s it}"))
+
+    @collect "test", -> [
+            @testServer "/app-test.js"
+            @testServer "/test/acl/acl-test.js"
+            @testServer "/core/job-management/job-manager-test.js"
+        ]

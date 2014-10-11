@@ -3,8 +3,11 @@
 │   ├── assets
 │   │   ├── css
 │   │   │   └── client.css
+│   │   ├── html
+│   │   │   └── index.html
 │   │   ├── images
 │   │   │   └── image.png
+│   │   ├── index.html
 │   │   └── js
 │   │       └── client.js
 │   └── server
@@ -21,10 +24,13 @@
     │   │   └── m.less
     │   ├── images
     │   │   └── image.png
-    │   └── js
-    │       └── entry.ls
+    │   ├── js
+    │   │   └── entry.ls
+    │   └── views
+    │       ├── base.jade
+    │       └── index.jade
     └── server
         ├── x.ls
         └── y.ls
 
-13 directories, 14 files
+15 directories, 18 files

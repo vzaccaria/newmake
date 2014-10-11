@@ -1,9 +1,8 @@
 .
 ├── _site
-│   ├── assets
-│   │   └── images
 │   └── server
 │       └── js
+├── final.tree
 ├── makefile
 ├── nmake.coffee
 ├── orig.tree
@@ -13,10 +12,13 @@
     │   │   └── m.less
     │   ├── images
     │   │   └── image.png
-    │   └── js
-    │       └── entry.ls
+    │   ├── js
+    │   │   └── entry.ls
+    │   └── views
+    │       ├── base.jade
+    │       └── index.jade
     └── server
         ├── x.ls
         └── y.ls
 
-11 directories, 8 files
+10 directories, 11 files

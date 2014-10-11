@@ -1,12 +1,13 @@
 #!/usr/bin/env lsc
 
-_       = require('underscore')
-_.str   = require('underscore.string');
-glob    = require 'glob'
-_       = require 'underscore'
-path    = require 'path'
-fs      = require 'fs'
-shelljs = require 'shelljs'
+_         = require('underscore')
+_.str     = require('underscore.string');
+glob      = require 'glob'
+_         = require 'underscore'
+path      = require 'path'
+fs        = require 'fs'
+shelljs   = require 'shelljs'
+minimatch = require 'minimatch'
 
 debug = require('debug')('nmake:core')
 
@@ -21,6 +22,7 @@ clean-targets       = []
 notify-targets      = []
 watch-sources       = []
 notify-strip-string = ""
+notifyRewrites       = []
 silent              = false
 command             = ""
 makefile            = ""
@@ -120,6 +122,9 @@ class Box
     notify-strip: (s) ~>
         notify-strip-string := s
 
+    notify-rewrite: (target, glob) ~>
+        notifyRewrites.push(target: target, glob: glob)
+
     get-build-targets: (array) ~>
         original-files = @unwrap-objects(array)
         source-build-targets = original-files.map (.build-target)
@@ -216,7 +221,7 @@ class Box
         if not opts?.root?
             throw "Please specify a root for forever to work"
 
-        cmd = "forever #{opts.root} -w --watchDirectory #{dname}"
+        cmd = "forever -w --watchDirectory #{dname} #{opts.root}"
 
         if opts?.ignore?
             cmd = "#cmd --watchIgnore #{opts.ignore}"
@@ -335,7 +340,7 @@ parse-watch = (b) ->
     start-livereload()    
 
     if command == ""
-        command := all
+        command := \all
 
     shelljs.exec 'make all -j', {silent: silent}, ->
         watch-source-files (event, filepath) ->
@@ -345,7 +350,7 @@ parse-watch = (b) ->
             else
                 debug "Added/changed file #filepath"
                 parse b, -> 
-                    shelljs.exec 'make #command -j -j', {+silent}, ->
+                    shelljs.exec 'make #command -j', {+silent}, ->
                         debug "Make done"
 
         watch-dest-files (event, filepath) ->
@@ -369,13 +374,25 @@ start-livereload = ->
    debug lr
    lr.listen(LIVERELOAD_PORT)
 
-notifyChange = (path, cb) ->
+notify-change = (path) ->
   fileName = require('path').relative(notify-strip-string, path)
-  debug("Notifying Livereload for a change to #fileName")
-  reset = ->
-     lr.changed body: { files: [fileName] }
-     cb?()
-  set-timeout reset, 1
+  found = false
+
+  delay = setTimeout(_, 100)
+
+  for w in notifyRewrites
+    let x = w
+        debug "checking for #fileName, #{x.glob}"
+        if minimatch fileName, x.glob
+          debug("Notifying Livereload for a change to #{x.target}")
+          delay ->
+            lr.changed body: { files: [x.target] }
+          found := true
+
+  if not found
+    delay ->
+        lr.changed body: { files: [fileName] }
+
 
 
 _       = require('underscore')
