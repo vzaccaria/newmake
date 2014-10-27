@@ -10,6 +10,12 @@ plugins =
     concatcss: ->
         @concat-ext \css, it
 
+    compressjs: (array) ->
+        @process-files((-> "gzip < #{it.build-target} > $@"), ".js.gz", array)
+
+    compresscss: (array) ->
+        @process-files((-> "gzip < #{it.build-target} > $@"), ".css.gz", array)
+
     minifyjs: (array) ->
         @process-files((-> "minifyjs -m -i #{it.build-target} > $@"), ".min.js", array)
         
@@ -23,7 +29,7 @@ plugins =
         @compile-files( (-> "jade -p #{it.orig-complete} < #{it.orig-complete} > #{it.build-target}"), ".html", g, deps )
 
     browserify: (g, deps) ->
-        @compile-files( (-> "browserify -t liveify --debug #{it.orig-complete} -o #{it.build-target}"), ".js", g, deps)
+        @compile-files( (-> "browserify -t liveify #{it.orig-complete} -o #{it.build-target}"), ".js", g, deps)
 
     exec: (cmd, ext, g, deps) ->
         @compile-files(cmd, ext, g, deps)

@@ -40,7 +40,7 @@ parse ->
         ]        
 
     @testServer = (it) -> 
-        @cmdExec("test", ("mocha -C --bail -t 5000 -R min #{s it}"))
+        @cmd("mocha -C --bail -t 5000 -R min #{s it}")
 
     @collect "test", -> [
             @testServer "/app-test.js"

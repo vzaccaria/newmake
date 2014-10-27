@@ -84,6 +84,11 @@ class Box
         @create-phony-target(name, "", cmd)
         return { build-target: name }
 
+    cmd: (comd) ~>
+        name = "cmd-#{@get-tmp()}"
+        @create-phony-target(name, "", comd)
+        return { build-target: name }
+
     on-clean: (cmd) ~>
         name = "clean-#{@get-tmp()}"
         @create-phony-target(name, "", cmd)
@@ -125,45 +130,91 @@ class Box
     notify-rewrite: (target, glob) ~>
         notifyRewrites.push(target: target, glob: glob)
 
-    get-build-targets: (array) ~>
-        original-files = @unwrap-objects(array)
-        source-build-targets = original-files.map (.build-target)
-        return source-build-targets
+    understood: (finfo) ~>
+        if not finfo.orig.ext? 
+            console.log new Error().stack
+            throw "Basename undefined"
+        s = ""
+        s = s + "\nfrom:  #{finfo.orig.base-dir} / #{finfo.orig.base-name} . #{finfo.orig.ext} ( #{finfo.orig.complete-name} ) \n" if finfo.orig
+        s = s + "to:    #{finfo.prod.base-dir} / #{finfo.prod.base-name} . #{finfo.prod.ext} ( #{finfo.prod.complete-name} ) \n" if finfo.prod
+        return s
 
-    get-build-target-as-deps: (array) ~>
-        source-build-targets = @get-build-targets(array) * ' '
-        return source-build-targets
+
+    get-source-deps: (array) ~>
+        original-files = @unwrap-objects(array)
+        deps = original-files.map ->
+            return it.prod.complete-name if it.prod?.complete-name?
+            return it.build-target if it.build-target?
+            return ""
+        return  deps * ' '
+
+    finalize: (finfo) ~>
+        finfo.build-target  = finfo.prod.complete-name
+        finfo.orig-complete = finfo.orig.complete-name   
+        return finfo
+
+    change-extension: (newext, prev-finfo) ~~>
+        finfo = { orig: prev-finfo.prod, prod: {}}
+        finfo.prod.complete-name = path.normalize "#{finfo.orig.base-dir}/#{finfo.orig.base-name}#newext"
+        finfo.prod.ext           = newext
+        finfo.prod.base-name     = path.basename(finfo.prod.complete-name, finfo.prod.ext)
+        finfo.prod.base-dir      = finfo.orig.base-dir
+
+        return @finalize(finfo)
+
+    change-folder: (folder, prev-finfo) ~~>
+        finfo = { orig: prev-finfo.prod, prod: {}}
+        finfo.prod.complete-name = path.normalize "#{folder}/#{finfo.orig.base-name}#{finfo.orig.ext}"
+        finfo.prod.ext           = finfo.orig.ext
+        finfo.prod.base-name     = path.basename(finfo.prod.complete-name, finfo.prod.ext)
+        finfo.prod.base-dir      = folder
+
+        return @finalize(finfo)
+
+    prefix-name: (prefix, prev-finfo) ~~>
+        finfo = { orig: prev-finfo.prod, prod: {}}
+        finfo.prod.complete-name = path.normalize "#{finfo.orig.base-dir}/#prefix-#{finfo.orig.base-name}#{finfo.orig.ext}"
+        finfo.prod.ext           = finfo.orig.ext
+        finfo.prod.base-name     = path.basename(finfo.prod.complete-name, finfo.prod.ext)
+        finfo.prod.base-dir      = finfo.orig.base-dir
+        debug @understood(finfo)
+
+        return @finalize(finfo)    
+
+
+    from-name: (name) ~>
+        finfo                    = { orig: {}, prod: {} }
+        finfo.prod.complete-name = path.normalize "#name"
+        finfo.prod.ext           = path.extname(finfo.prod.complete-name)
+        finfo.prod.base-name     = path.basename(finfo.prod.complete-name, finfo.prod.ext)
+        finfo.prod.base-dir      = path.dirname(finfo.prod.complete-name)       
+        return @finalize(finfo)
 
     create-leaf-product: (original-file-name, newext) ~>
-        finfo               = {}
-        finfo.orig-complete = original-file-name
-        finfo.ext           = path.extname(original-file-name)
-        finfo.orig-name     = path.basename(original-file-name, finfo.ext)
-        finfo.orig-dir      = path.dirname(original-file-name)
+        finfo = { orig: @from-name(original-file-name).prod }
+        newext ?= finfo.orig.ext
+        finfo.prod = (@from-name(original-file-name) |> @change-extension(newext) |> @prefix-name(@get-tmp()) |> @change-folder(@build-dir)).prod
+        return @finalize(finfo)
 
-        newext ?= finfo.ext
-        finfo.dest-name    = "#{finfo.orig-name}#newext"
-        finfo.build-target = "#{@build-dir}/#{@get-tmp()}-#{finfo.dest-name}"
-        return finfo
+    create-reduction-product: (prod-name) ~>
+        @from-name("#{@build-dir}/#prod-name")
 
-    create-reduction-product: (original-file-name) ~>
-        finfo               = {}
-        finfo.ext           = path.extname(original-file-name)
-        finfo.orig-name     = path.basename(original-file-name, finfo.ext)
-        finfo.orig-dir      = path.dirname(original-file-name)
+    create-processed-product: (orig, newext, target-dir) ~>
+        finfo       = { orig: orig }
+        newext      ?= finfo.orig.ext
+        finfo.prod  = (finfo |> @change-extension(newext) |> @prefix-name(@get-tmp()) |> @change-folder(@build-dir)).prod
+        return @finalize(finfo)
 
-        finfo.dest-name    = "#{finfo.orig-name}#{finfo.ext}"
-        finfo.build-target = "#{@build-dir}/#{finfo.dest-name}"
+    create-root-product-to-dir: (dir, name, ext, orig) ~>
+        finfo      = { orig: orig }
+        finfo.prod = @from-name("#dir/#name#ext").prod
+        return @finalize(finfo)
 
-        return finfo
+    create-root-product-dest: (whole-name, orig) ~>
+        finfo      = { orig: orig }
+        finfo.prod = @from-name(whole-name).prod
+        return @finalize(finfo)
 
-    create-processed-product: (it, ext) ~>
-            finfo              = {}
-            finfo.orig-name    = it.orig-name
-            finfo.orig-dir     = it.orig-dir
-            finfo.dest-name    = "#{finfo.orig-name}#ext"
-            finfo.build-target = "#{@build-dir}/#{finfo.dest-name}"
-            return finfo
 
     get-tmp: ~>
         @tmp = @tmp + 1
@@ -174,12 +225,13 @@ class Box
         if obj.length > 1 or obj.length == 0
             throw "Sorry, `dest` can receive a single file only.."
 
-        for o in obj 
-            dest-dir = @prepare-dir(dname)
-            @create-target(dname, "#{o.build-target} #dest-dir", "cp #{o.build-target} $@")
+        o = obj[0]
 
-        obj[0].build-target = dname
-        return obj
+        dir     = @prepare-dir(dname)
+        finfo   = @create-root-product-dest(dname, o.prod)
+        @create-target(dname, "#{finfo.orig.complete-name} #dir", "cp #{finfo.orig.complete-name} $@")
+
+        return finfo 
 
     notify: (body) ~>
         obj = @unwrap-objects(body) 
@@ -193,28 +245,29 @@ class Box
             options = {}
 
         debug JSON.stringify(options)
-
         obj = @unwrap-objects(array)
-        for o in obj
-            if o.orig-dir != "(NONE)"
-                if options?.strip?
-                    debug "Stripping #{o.orig-dir}"
-                    o.orig-dir = o.orig-dir.replace(options.strip, '')
+        return obj.map (o) ~>
+                if not _.isEmpty(o.prod)
 
+                    base-dir-stripped = o.orig.base-dir
+                    base-dir-stripped = base-dir-stripped.replace(options.strip, '') if options?.strip?
 
-                bt = path.normalize("#dname/#{o.orig-dir}/#{o.dest-name}")
+                    dir  = "#dname/#base-dir-stripped"
+                    name = o.orig.base-name
+                    ext  = o.prod.ext
 
-                @create-target(bt, 
-                          "#{o.build-target}", 
-                          "@mkdir -p #dname/#{o.orig-dir}", 
-                          "cp #{o.build-target} $@")
+                    finfo = @create-root-product-to-dir(dir, name, ext, o.prod)
 
-                o.build-target = bt 
+                    # debug "Final target:"
+                    # debug finfo
+                    @create-target(finfo.prod.complete-name, 
+                              "#{o.prod.complete-name}", 
+                              "@mkdir -p #dir", 
+                              "cp #{o.prod.complete-name} $@")
 
-            else
-                console.error "Skipping #{o.build-target} 'cause no original dir can be found"
-                console.error "You might use `dest` for those files."
-        return obj
+                    return finfo
+                else
+                    throw "Skipping #{o.build-target} 'cause no original dir can be found\n You might use `dest` for those files."
 
     forever-watch: (dname, opts) ->
 
@@ -250,16 +303,22 @@ class Box
 
         dfiles = files.map ~>
             dds = local-deps.slice()
+
             finfo = @create-leaf-product(it, ext)
+
             if not (it in dds)
                 dds.push(it)
+
+            debug "Compiling files.."
             @create-target("#{finfo.build-target}", "#{dds * ' '}", action.bind(@)(finfo))
             add-deps(dds)        
             return finfo                                          
 
     reduce-files: (action, new-name, ext, array) ~>
         finfo = @create-reduction-product("#new-name#{@get-tmp()}.#ext")
-        deps = @get-build-target-as-deps(array)
+        debug "Created reduction product"
+        debug finfo
+        deps = @get-source-deps(array)
         @create-target(finfo.build-target, deps, action)
         return finfo        
 
@@ -267,18 +326,31 @@ class Box
         files = @unwrap-objects(array)
         dfiles = files.map ~>
             finfo = @create-processed-product(it, ext)
-            @create-target(finfo.build-target, finfo.build-target, action.bind(@)(finfo))
+            @create-target(finfo.build-target, finfo.orig.complete-name, action.bind(@)(finfo))
+            return finfo
+        return dfiles
 
-    copy-target: (name) ~>
-        finfo = {}
-        finfo.build-target = "#name"
-        return finfo
+    
 
     collect: (name, array) ~>
-        source-build-targets = @get-build-target-as-deps(array)
+        files = @unwrap-objects(array)
+        source-build-targets = @get-source-deps(files)
         @create-phony-target(name, source-build-targets)
-        finfo = {}
-        finfo.build-target = "#name"
+
+        finfo                    = { orig: {}, prod: {} }
+        finfo.prod.complete-name = "#name"
+        finfo.prod.ext           = "" 
+        finfo.prod.base-name     = ""
+        finfo.prod.base-dir      = @build-dir
+
+        # for backward compatibility
+        finfo.build-target       = finfo.prod.complete-name
+
+        return finfo
+
+    copy-target: (name) ~>
+        finfo = { orig: {}, prod: {} }
+        finfo.prod.complete-name = name
         return finfo
 
 
