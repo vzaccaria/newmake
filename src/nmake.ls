@@ -154,6 +154,8 @@ class Box
         return finfo
 
     change-extension: (newext, prev-finfo) ~~>
+        debug "change extension"
+        debug prev-finfo
         finfo = { orig: prev-finfo.prod, prod: {}}
         finfo.prod.complete-name = path.normalize "#{finfo.orig.base-dir}/#{finfo.orig.base-name}#newext"
         finfo.prod.ext           = newext
@@ -200,9 +202,9 @@ class Box
         @from-name("#{@build-dir}/#prod-name")
 
     create-processed-product: (orig, newext, target-dir) ~>
-        finfo       = { orig: orig }
-        newext      ?= finfo.orig.ext
-        finfo.prod  = (finfo |> @change-extension(newext) |> @prefix-name(@get-tmp()) |> @change-folder(@build-dir)).prod
+        orig-prod   = orig.prod 
+        final-prod  = (orig |> @change-extension(newext) |> @prefix-name(@get-tmp()) |> @change-folder(@build-dir)).prod
+        finfo = { orig: orig-prod, prod: final-prod}
         return @finalize(finfo)
 
     create-root-product-to-dir: (dir, name, ext, orig) ~>
@@ -325,6 +327,7 @@ class Box
     process-files: (action, ext, array) ~>
         files = @unwrap-objects(array)
         dfiles = files.map ~>
+            debug it
             finfo = @create-processed-product(it, ext)
             @create-target(finfo.build-target, finfo.orig.complete-name, action.bind(@)(finfo))
             return finfo

@@ -32,13 +32,13 @@ print_important_message "Cleaning up"
 make clean
 
 print_important_message "Checking if cleaned"
-tree > ../actual.tree
+tree -a > ../actual.tree
 diff ../actual.tree orig.tree
 
 print_important_message "Building for final check"
 make all
 
-tree > ../actual.tree
+tree -a > ../actual.tree
 diff ../actual.tree final.tree
 
 if [ $? -eq 0 ]

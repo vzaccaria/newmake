@@ -23,8 +23,9 @@ parse ->
                 @copyTarget a("html/index.html")
 
             @dest a("js/client.js"), ->
-                @concatjs -> 
-                        @livescript s("**/*.ls")
+                @minifyjs ->
+                    @concatjs -> 
+                            @livescript s("**/*.ls")
 
             @toDir a("html"), { strip: s("views") }, -> 
                 @jade s("views/index.jade"), a("views/base.jade")

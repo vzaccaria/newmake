@@ -1,4 +1,14 @@
 .
+├── .build
+│   ├── 1-m.css
+│   ├── 2-image.png
+│   ├── 4-entry.js
+│   ├── 5-concat-tmp3.min.js
+│   ├── 6-index.html
+│   ├── 7-x.js
+│   ├── 8-y.js
+│   ├── concat-tmp0.css
+│   └── concat-tmp3.js
 ├── _site
 │   ├── assets
 │   │   ├── css
@@ -33,4 +43,4 @@
         ├── x.ls
         └── y.ls
 
-15 directories, 18 files
+16 directories, 27 files

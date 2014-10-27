@@ -17,7 +17,7 @@ plugins =
         @process-files((-> "gzip < #{it.build-target} > $@"), ".css.gz", array)
 
     minifyjs: (array) ->
-        @process-files((-> "minifyjs -m -i #{it.build-target} > $@"), ".min.js", array)
+        @process-files((-> "uglifyjs #{it.orig-complete} -c -m  > $@"), ".min.js", array)
         
     livescript: (g) ->
         @compile-files( (-> "lsc -p -c #{it.orig-complete} > #{it.build-target}" ) , ".js", g)
