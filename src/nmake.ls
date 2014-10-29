@@ -9,7 +9,8 @@ fs        = require 'fs'
 shelljs   = require 'shelljs'
 minimatch = require 'minimatch'
 
-debug = require('debug')('nmake:core')
+debug = require('debug')('normal')
+hdebug = require('debug')('highlight')
 
 _.mixin(_.str.exports());
 _.str.include('Underscore.string', 'string');
@@ -87,6 +88,11 @@ class Box
     cmd: (comd) ~>
         name = "cmd-#{@get-tmp()}"
         @create-phony-target(name, "", comd)
+        return { build-target: name }
+
+    make: (maketarget) ~>
+        name = "cmd-#{@get-tmp()}"
+        @create-phony-target(name, "", "make maketarget")
         return { build-target: name }
 
     on-clean: (cmd) ~>
@@ -235,6 +241,8 @@ class Box
 
         return finfo 
 
+
+
     notify: (body) ~>
         obj = @unwrap-objects(body) 
         for o in obj
@@ -248,7 +256,11 @@ class Box
 
         debug JSON.stringify(options)
         obj = @unwrap-objects(array)
+        hdebug "Unrapped"
+        hdebug obj
         return obj.map (o) ~>
+                debug "Considering destination #dname"
+                debug o
                 if not _.isEmpty(o.prod)
 
                     base-dir-stripped = o.orig.base-dir
@@ -288,6 +300,9 @@ class Box
     add-plugin: (name, action) ~>
         @[name] = action.bind(@)
 
+    file-escape: (it) -> it.replace(/'/, '\\\'')
+
+
     #            _                        _ 
     #   _____  _| |_ ___ _ __ _ __   __ _| |
     #  / _ \ \/ / __/ _ \ '__| '_ \ / _` | |
@@ -302,6 +317,8 @@ class Box
             local-deps := glob.sync(local-deps)
         else 
             local-deps := []
+
+        files = files.map (@file-escape)
 
         dfiles = files.map ~>
             dds = local-deps.slice()
@@ -333,11 +350,31 @@ class Box
             return finfo
         return dfiles
 
-    
+   
+    command-seq: (body) ->
+        commands = @unwrap-objects(body)
+        names    = commands.map (.build-target)
+        name     = "cmd-seq-#{@get-tmp()}"
+        comd     = [ "make #i" for i in names ] * '\n\t'
+        @create-phony-target(name, "", comd)
+        return { build-target: name }
 
-    collect: (name, array) ~>
+    collect: (name, options, array) ~>
+        if not array? 
+            array = options 
+            options = {}
+
+
         files = @unwrap-objects(array)
         source-build-targets = @get-source-deps(files)
+
+        if options.after?
+            if _.isArray(options.after)
+                source-build-targets = source-build-targets + " #{options.after * ' '}"
+            else
+                source-build-targets = source-build-targets + " #{options.after}"
+
+
         @create-phony-target(name, source-build-targets)
 
         finfo                    = { orig: {}, prod: {} }
