@@ -9,7 +9,8 @@ fs        = require 'fs'
 shelljs   = require 'shelljs'
 minimatch = require 'minimatch'
 
-debug = require('debug')('normal')
+debug = -> 
+# require('debug')('normal')
 hdebug = require('debug')('highlight')
 
 _.mixin(_.str.exports());
@@ -23,10 +24,12 @@ clean-targets       = []
 notify-targets      = []
 watch-sources       = []
 notify-strip-string = ""
-notifyRewrites       = []
+notifyRewrites      = []
 silent              = false
 command             = ""
 makefile            = ""
+EXPRESS_PORT        = 4000;
+EXPRESS_ROOT        = '.';
 
 reset-makefile = ->
     makefile := ".DEFAULT_GOAL := all\n"
@@ -92,7 +95,7 @@ class Box
 
     make: (maketarget) ~>
         name = "cmd-#{@get-tmp()}"
-        @create-phony-target(name, "", "make maketarget")
+        @create-phony-target(name, "", "make #maketarget")
         return { build-target: name }
 
     on-clean: (cmd) ~>
@@ -135,6 +138,9 @@ class Box
 
     notify-rewrite: (target, glob) ~>
         notifyRewrites.push(target: target, glob: glob)
+
+    serveRoot: (root) ~>
+        EXPRESS_ROOT := root
 
     understood: (finfo) ~>
         if not finfo.orig.ext? 
@@ -256,8 +262,8 @@ class Box
 
         debug JSON.stringify(options)
         obj = @unwrap-objects(array)
-        hdebug "Unrapped"
-        hdebug obj
+        debug "Unwrapped"
+        debug obj
         return obj.map (o) ~>
                 debug "Considering destination #dname"
                 debug o
@@ -415,11 +421,13 @@ parse = (b, cb) ->
     watch-sources := deps 
 
 watch-source-files = (cb) ->
-        debug "First build completed"
+        hdebug "First build completed"
         Gaze = require('gaze').Gaze;
 
         watch-sources := watch-sources.map ~>
             path.resolve(it)
+
+        hdebug "Watching #{watch-sources}"
 
         gaze = new Gaze(watch-sources);
 
@@ -451,6 +459,10 @@ parse-watch = (b) ->
 
     start-livereload()    
 
+    if argv.serve
+       startExpress!
+
+
     if command == ""
         command := \all
 
@@ -469,7 +481,24 @@ parse-watch = (b) ->
             notify-change filepath
 
 
+                                   
+#   _____  ___ __  _ __ ___  ___ ___ 
+#  / _ \ \/ / '_ \| '__/ _ \/ __/ __|
+# |  __/>  <| |_) | | |  __/\__ \__ \
+#  \___/_/\_\ .__/|_|  \___||___/___/
+#           |_|                      
 
+
+
+
+startExpress = ->
+  express = require('express');
+  app = express();
+  app.use(require('connect-livereload')()) 
+  app.use(express.static(EXPRESS_ROOT, {maxAge: 0}));
+  app.listen(EXPRESS_PORT);
+  console.log "Serving #{EXPRESS_ROOT} at port #{EXPRESS_PORT}"
+  console.log "Added connect-livereload: " 
 
 #  _ _                    _                 _ 
 # | (_)_   _____ _ __ ___| | ___   __ _  __| |
@@ -563,6 +592,9 @@ argv     = optimist.usage(usage-string,
               silent:
                 alias: 's', description: 'silent mode', boolean: true, default: false
 
+              serve:
+                alias: 'r', description: 'serve directory', boolean: true, default: false
+
               help:
                 alias: 'h', description: 'this help', default: false
 
@@ -576,6 +608,9 @@ if(argv.help)
 
 command := argv._[0] if argv._?[0]?
 silent := argv.silent
+
+hdebug argv
+
 
 if argv.watch
     module.exports = {
