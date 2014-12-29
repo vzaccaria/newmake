@@ -12,6 +12,8 @@ minimatch = require 'minimatch'
 debug = -> 
 # require('debug')('normal')
 hdebug = require('debug')('highlight')
+adebug = require('debug')('arguments')
+
 
 _.mixin(_.str.exports());
 _.str.include('Underscore.string', 'string');
@@ -586,6 +588,10 @@ Usage: #{name} [--option=V | -o V]
 require! 'optimist'
 
 argv     = optimist.usage(usage-string,
+
+              target:
+                alias: 't', description: 'target to create', default: ''
+
               watch:
                 alias: 'w', description: 'watch and rebuild', boolean: true, default: false
 
@@ -606,10 +612,10 @@ if(argv.help)
   process.exit(0)
   return
 
-command := argv._[0] if argv._?[0]?
+command := argv.target
 silent := argv.silent
 
-hdebug argv
+adebug argv
 
 
 if argv.watch
