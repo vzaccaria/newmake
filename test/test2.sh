@@ -36,6 +36,7 @@ run "rm -f ../actual.tree"
 print_important_message "Creating makefile"
 run "coffee nmake.coffee"
 
+run "mkdir .build"
 print_important_message "Running pre-test"
 run "make all"
 

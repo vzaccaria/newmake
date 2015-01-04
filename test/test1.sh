@@ -1,4 +1,4 @@
-#!/usr/bin/env sh 
+#!/usr/bin/env zsh 
 set -e
 
 silent=true
@@ -26,7 +26,9 @@ function print_important_message {
 srcdir=`dirname $0`
 srcdir=`cd $srcdir; pwd`
 
+
 run "pushd ${srcdir}/test1"
+
 
 print_important_message "Removing previous test data"
 run "rm -rf _site"
@@ -37,6 +39,7 @@ run "rm -f ../actual.tree"
 print_important_message "Creating makefile"
 run "coffee nmake.coffee"
 
+run "mkdir .build"
 
 print_important_message "Running test"
 run "make all"
