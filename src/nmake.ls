@@ -322,7 +322,10 @@ class Box
         files = glob.sync(g)
 
         if local-deps? 
-            local-deps := glob.sync(local-deps)
+            if not _.is-array(local-deps)
+                local-deps := glob.sync(local-deps)
+            else
+                local-deps := _.flatten(_.map(local-deps, -> glob.sync(it)))
         else 
             local-deps := []
 
