@@ -10,74 +10,104 @@ emptyNode = -> tree.parse({})
 class treeBuilder 
 
     -> 
-        @cur-node = tree.parse {+root}
+        @curNode = emptyNode!
+        @curNode.model.targetName = "root"
+        @curNode.model.type = "root"
 
-    collect: (name, body, options) ~>  
-        debug "Creating #name"
-        t = @create-tree(body)
-        t.model.target-name = name
-        t.model.options = options
-        @cur-node.addChild(t)
-
-    create-tree: (body) ~>
-        new-node = emptyNode!
-        saved-cur-node = @cur-node
-        @cur-node = new-node
+    createTree: (body) ~>
+        newNode = emptyNode!
+        savedCurNode = @curNode
+        @curNode = newNode
         body.apply(@, [ @ ])
-        @cur-node = saved-cur-node 
-        debug new-node
-        return new-node
+        @curNode = savedCurNode 
+        debug newNode
+        newNode.model.children = newNode.children.map (.model)
+        return newNode
 
+    compileFiles: (cmd, product, src, deps) ~>
+        src = [ src ]
+        @curNode.addChild(tree.parse({cmd-fun: cmd, product-fun: product, src: src, deps: deps, targetName: "c-#{uid(8)}", type: "compile", children: [] }))
 
-    compileFiles: (cmd, src, deps) ~>
-        debug("Compile #src")
-        @cur-node.addChild(tree.parse(cmd: cmd, src: src, deps: deps, targetName: "c-#{uid(8)}"))
+    processFiles: (cmd, product, body) ~>
+        root = @createTree(body)
+        _.extend(root.model, {cmd-fun: cmd, product-fun: product, targetName: "p-#{uid(8)}", type: "process"})
+        @curNode.addChild(root)
 
-    processFiles: (cmd, ext, body) ~>
-        t = @create-tree(body)
-        t.model = { cmd: cmd, ext: ext, targetName: "p-#{uid(8)}" }
-        @cur-node.addChild(t)
+    _collect: (name, body, options) ~>  
+        debug "Creating #name"
+        root = @createTree(body)
+        _.extend(root.model, { targetName: name, options: options, type: "collect" })
+        @curNode.addChild(root)
+
+    collect: (name, body) ~>
+        @_collect(name, body, {})
+
+    collectSeq: (name, body) ~>
+        @_collect(name, body, {+sequential})
 
     parse: (body) ~>
-        t = @create-tree(body)
-        @cur-node = t 
-        @cur-node.model.root = true
+        @curNode = @createTree(body)
+        _.extend(@curNode.model, { targetName: "root", type: "root" })
+
 
 parse = (body) ->
     tb = new treeBuilder()
     tb.parse(body)
-    return tb
+    return tb.curNode
 
-dump = (tb) ->
-    tb.cur-node.walk {strategy: 'post'}, (node) ->
-        console.log node.model
+removeFirst = (root, condition) ->
+    x = root.first(condition) 
+    if x? and (x.model.target-name != root.target-name)
+        father = x.parent
+        for c in x.children 
+            father.addChild(c)
+        x.drop()
+        return true
+    else 
+        return false
 
-getTargets = (tb, node) ->
-    ts = []
-    var starting-node
-    if not node?
-        starting-node := tb.cur-node
-    else
-        if _.is-string(node)
-            starting-node := tb.cur-node.first (n) ->
-                n.model.targetName == node 
-        else
-            starting-node := node 
+removeAll = (root, condition) ->
+    do
+        null
+    while removeFirst(root, condition)
 
-    starting-node.walk {strategy: 'post'}, (node) ->
-        if node.model.targetName?
-            ts := ts ++ [ node.model.targetName ]
+mapProducts = (r) ->
+    r.walk {strategy: 'post'}, (node) ->
+        products = []
+        let @=node.model 
+            if @type == "compile"
+                @products = [ @product-fun({source: s}) for s in @src ]
+            else 
+                if @type == "process"
+                    cproducts = _.flatten(@children.map (.products))
+                    @products = [ @product-fun({source: s}) for s in _.flatten(@children.map (.products)) ]
+                else
+                    if @type == "root"
+                        cproducts = _.flatten(@children.map (.products))
+                        @products = cproducts
 
-    return ts
 
-transcript = (tb) ->
-    t = getTargets(tb)
-    for x in t
-        console.log "Target #x depends on #{getTargets(tb, x)}"
+
+transcript = (r) ->
+
+    removeAll r, (n) ->
+        n.model.type == "collect"
+
+    mapProducts r
+
+    r.walk {strategy: 'post'}, (node) ->
+        console.log print-target(node)
+
+
+print-target = (node) ->
+    let @=node.model
+        """ 
+            #{@targetName} [ #{@type} ] depends on #{(@children.map (.targetName)) * ' '} - products #{@products * ','}
+        """
+
 
 module.exports = {
     parse: parse 
-    getTargets: getTargets 
     transcript: transcript
     }
 

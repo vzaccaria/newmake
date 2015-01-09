@@ -1,23 +1,21 @@
 "use strict"; 
 
-var { parse, getTargets, transcript } = require('./tree')
+var { parse, transcript } = require('./tree')
+
+var linkCmd  = __ => `minify ${__.source} -o ${__.product}`
+var linkProd = __ => `minified(${__.source})`
+var ccCmd    = __ => `cc ${__.source} -o ${__.product}`
+var ccProd   = __ => `prodOf(${__.source})`
 
 var tb = parse(_ => {
-
     _.collect("x", _ => {
-
-    	_.processFiles("link", ".x", _ => {
-
-    	        _.collect("y", _ => {
-
-    	            _.compileFiles("cc", "B.c");
-    	            _.compileFiles("cc", "D.c", [ "E.h" ]); 
-
-    	        });
-
-    			_.compileFiles("cc", "x.c");
-
-    	})
+        	_.processFiles(linkCmd, linkProd, _ => {
+        	        _.collect("y", _ => {
+        	            _.compileFiles(ccCmd, ccProd, "B.c");
+        	            _.compileFiles(ccCmd, ccProd, "D.c", [ "E.h" ]);
+        	        });
+	        });
+        	_.compileFiles(ccCmd, ccProd, "x.c");
 	})
 })
 
