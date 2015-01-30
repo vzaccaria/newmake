@@ -1,6 +1,6 @@
 {
   "name": "newmake",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Another attempt at a simple build system",
   "main": "index.js",
   "scripts": {
