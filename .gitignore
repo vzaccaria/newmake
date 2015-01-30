@@ -37,3 +37,5 @@ test/test2/_site
 test/test2/.build
 test/test1/_site
 test/test1/.build
+.build
+lib/index.js

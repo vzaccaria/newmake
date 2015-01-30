@@ -5,8 +5,11 @@
 
 parse ->
     @collect "all", ->
-        @toDir "./lib", { strip: "src" }, -> [
-            @livescript "./src/*.ls"
+        @command-seq -> [
+            @toDir "./lib", { strip: "src" }, -> [
+                @livescript "./src/*.ls"
+            ]
+            @cmd "cp ./lib/index.js ."
         ]
 
     @collect "test", -> 

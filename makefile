@@ -28,42 +28,54 @@ lib/screen.js: .build/3-screen.js
 	@mkdir -p ./lib/
 	cp .build/3-screen.js $@
 
-.PHONY : all
-all: lib/index.js lib/nmake.js lib/plugin.js lib/screen.js
-
 .PHONY : cmd-4
 cmd-4: 
-	./test/test1.sh
+	cp ./lib/index.js .
 
-.PHONY : cmd-5
-cmd-5: 
-	./test/test2.sh
-
-.PHONY : cmd-seq-6
-cmd-seq-6: 
+.PHONY : cmd-seq-5
+cmd-seq-5: 
+	make lib/index.js
+	make lib/nmake.js
+	make lib/plugin.js
+	make lib/screen.js
 	make cmd-4
-	make cmd-5
 
-.PHONY : test
-test: cmd-seq-6
+.PHONY : all
+all: cmd-seq-5
+
+.PHONY : cmd-6
+cmd-6: 
+	./test/test1.sh
 
 .PHONY : cmd-7
 cmd-7: 
-	./node_modules/.bin/xyz --increment major
+	./test/test2.sh
 
-.PHONY : release-major
-release-major: cmd-7
+.PHONY : cmd-seq-8
+cmd-seq-8: 
+	make cmd-6
+	make cmd-7
 
-.PHONY : cmd-8
-cmd-8: 
-	./node_modules/.bin/xyz --increment minor
-
-.PHONY : release-minor
-release-minor: cmd-8
+.PHONY : test
+test: cmd-seq-8
 
 .PHONY : cmd-9
 cmd-9: 
+	./node_modules/.bin/xyz --increment major
+
+.PHONY : release-major
+release-major: cmd-9
+
+.PHONY : cmd-10
+cmd-10: 
+	./node_modules/.bin/xyz --increment minor
+
+.PHONY : release-minor
+release-minor: cmd-10
+
+.PHONY : cmd-11
+cmd-11: 
 	./node_modules/.bin/xyz --increment patch
 
 .PHONY : release-patch
-release-patch: cmd-9
+release-patch: cmd-11
