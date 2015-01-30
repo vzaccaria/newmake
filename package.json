@@ -21,6 +21,7 @@
   "homepage": "https://github.com/vzaccaria/newmake",
   "dependencies": {
     "ansi-color": "^0.2.1",
+    "ansi-color-table": "^1.0.0",
     "connect-livereload": "~0.5.0",
     "debug": "^2.0.0",
     "express": "~4.10.1",
@@ -28,6 +29,7 @@
     "glob": "^4.0.6",
     "minimatch": "~1.0.0",
     "moment": "^2.9.0",
+    "optimist": "^0.6.1",
     "shelljs": "^0.3.0",
     "underscore": "^1.7.0",
     "underscore.string": "^2.3.3",
