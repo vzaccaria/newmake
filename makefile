@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := all
 
-.build/0-treeTest.js: src/treeTest.js
-	6to5 src/treeTest.js -o .build/0-treeTest.js
+.build/0-treeTest.js: src/treeTest.js6
+	6to5 src/treeTest.js6 -o .build/0-treeTest.js
 
 .build/1-index.js: src/index.ls
 	lsc -p -c src/index.ls > .build/1-index.js
@@ -17,6 +17,12 @@
 
 .build/5-tree.js: src/tree.ls
 	lsc -p -c src/tree.ls > .build/5-tree.js
+
+.build/6-web.js: src/packs/web.ls
+	lsc -p -c src/packs/web.ls > .build/6-web.js
+
+.build/7-make.js: src/backends/make.ls
+	lsc -p -c src/backends/make.ls > .build/7-make.js
 
 lib/treeTest.js: .build/0-treeTest.js
 	@mkdir -p ./lib/
@@ -42,35 +48,45 @@ lib/tree.js: .build/5-tree.js
 	@mkdir -p ./lib/
 	cp .build/5-tree.js $@
 
-.PHONY : cmd-6
-cmd-6: 
+lib/packs/web.js: .build/6-web.js
+	@mkdir -p ./lib//packs
+	cp .build/6-web.js $@
+
+lib/backends/make.js: .build/7-make.js
+	@mkdir -p ./lib//backends
+	cp .build/7-make.js $@
+
+.PHONY : cmd-8
+cmd-8: 
 	cp ./lib/index.js .
 
-.PHONY : cmd-seq-7
-cmd-seq-7: 
+.PHONY : cmd-seq-9
+cmd-seq-9: 
 	make lib/treeTest.js
 	make lib/index.js
 	make lib/nmake.js
 	make lib/plugin.js
 	make lib/screen.js
 	make lib/tree.js
-	make cmd-6
+	make lib/packs/web.js
+	make lib/backends/make.js
+	make cmd-8
 
-.PHONY : all
-all: cmd-seq-7
+.PHONY : build
+build: cmd-seq-9
 
-.PHONY : cmd-8
-cmd-8: 
-	make all
+.PHONY : cmd-10
+cmd-10: 
+	make build
 
-.PHONY : cmd-9
-cmd-9: 
+.PHONY : cmd-11
+cmd-11: 
 	node lib/treeTest.js
 
-.PHONY : cmd-seq-10
-cmd-seq-10: 
-	make cmd-8
-	make cmd-9
+.PHONY : cmd-seq-12
+cmd-seq-12: 
+	make cmd-10
+	make cmd-11
 
-.PHONY : test
-test: cmd-seq-10
+.PHONY : all
+all: cmd-seq-12

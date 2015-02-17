@@ -9,18 +9,20 @@ parse ->
         @compile-files( (-> "6to5 #{it.orig-complete} -o #{it.build-target}" ) , ".js", g)
 
 
-    @collect "all", ->
+    @collect "build", ->
         @command-seq -> [
             @toDir "./lib", { strip: "src" }, -> [
-                @es6 "src/treeTest.js"
+                @es6 "src/treeTest.js6"
                 @livescript "src/*.ls"
+                @livescript "src/packs/*.ls"
+                @livescript "src/backends/*.ls"
             ]
             @cmd "cp ./lib/index.js ."
         ]
 
-    @collect "test", -> 
+    @collect "all", -> 
         @command-seq -> [
-            @make \all
+            @make \build
             @cmd "node lib/treeTest.js"
         ]
 

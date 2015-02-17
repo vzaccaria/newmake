@@ -1,0 +1,34 @@
+"use strict";
+
+var {
+    parse
+} = require('./tree')
+
+var webPack = require('./packs/web')
+var {
+    transcript
+} = require('./backends/make')
+
+
+
+var tb = parse(_ => {
+    _.addPack(webPack)
+
+    _.collect("all", _ => {
+        _.mirrorTo("./lib", {
+            strip: 'src/'
+        }, _ => {
+            _.toFile("src/pippo.js", _ => {
+                _.concat(_ => {
+                    _.collect("build", _ => {
+                        _.livescript("src/*.ls")
+                        _.livescript("src/packs/*.ls")
+                        _.sixToFive("src/*.js")
+                    })
+                })
+            })
+        })
+    })
+})
+
+transcript(tb)
