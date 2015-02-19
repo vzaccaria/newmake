@@ -11,7 +11,7 @@ emptyNode = -> tree.parse({})
 # Each node model has the following properties
 #
 # @type     = model's type
-# @sources  = input files, if any
+# @sources  = input files, if any (compact form)
 # @products = output files, if any
 # @builds   = how each file in @sources is converted to a file in @products
 #             Each item in @builds has:

@@ -6,7 +6,7 @@ _module = ->
           
     iface = { 
         livescript: (dir, deps) ->
-            command = (_) -> "lsc -c #{_.source} -o #{_.product}"
+            command = (_) -> "lsc -c #{_.source}"
             product = (_) -> "#{_.source.replace(/\..*/, '.js')}"
             @compileFiles(command, product, glob.sync(dir))
 

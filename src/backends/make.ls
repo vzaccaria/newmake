@@ -31,7 +31,7 @@ _module = ->
                     console.log """
 
                                 #{c.product}: #{c.source} #{c.deps * ' '}
-                                      #{c.command}
+                                \t#{c.command}
                                 """
 
             if @builds? and @type in [ "reduce" ] 
@@ -39,7 +39,7 @@ _module = ->
                     console.log """
 
                                 #{c.product}: #{c.deps * ' '}
-                                      #{c.command}
+                                \t#{c.command}
                                 """
 
             console.log """ 

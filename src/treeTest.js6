@@ -18,16 +18,16 @@ var tb = parse(_ => {
         _.mirrorTo("./lib", {
             strip: 'src/'
         }, _ => {
-            _.toFile("src/pippo.js", _ => {
-                _.concat(_ => {
                     _.collect("build", _ => {
+                        _.toFile("./index.js", _ => {
+                            _.livescript("src/index.ls")
+                        })
                         _.livescript("src/*.ls")
                         _.livescript("src/packs/*.ls")
+                        _.livescript("src/backends/*.ls")
                         _.sixToFive("src/*.js")
                     })
                 })
-            })
-        })
     })
 })
 

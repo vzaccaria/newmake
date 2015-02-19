@@ -38,3 +38,10 @@ test/test2/.build
 test/test1/_site
 test/test1/.build
 .build
+src/backends/make.js
+src/index.js
+src/packs/web.js
+src/plugin.js
+src/screen.js
+src/tree.js
+lib/treeTest.js
