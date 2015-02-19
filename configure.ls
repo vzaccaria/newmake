@@ -23,6 +23,7 @@ parse ->
     @collect "all", -> 
         @command-seq -> [
             @make \build
-            @cmd "node lib/treeTest.js"
+            @cmd "chmod +x ./index.js"
+            @cmd "DEBUG=* node ./lib/treeTest.js"
         ]
 

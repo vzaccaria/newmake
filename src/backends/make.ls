@@ -2,61 +2,42 @@
 
 debug = require('debug')('backends/make')
 
-
-
-
 _module = ->
 
-    printPhonyTarget = (node, names) ->
-        let @=node.model
+    printPhonyTarget = (name, names) ->
             """ 
-            .PHONY: #{@targetName}
-            #{@targetName}: #{names * ' '}
+            .PHONY: #{name}
+            #{name}: #{names * ' '}
 
             """
 
-    removeProducts = (names) ->
-        [ "\t\trm #p" for p in names ]
+    printPhonySeqTarget = (name, names) ->
+            """ 
+            .PHONY: #{name}
+            #{name}: 
+            #{['\tmake '+n for n in names ] * '\n'}
 
-    printCleanTargets = (tb) ->
-        console.log """
-        clean:
-        #{(removeProducts tb.allProducts) * '\n'}
-        """
+            """
 
-    printTarget = (name, node) ->
-        let @=node.model
-            if @builds? and @type in [ "compile", "process", "move" ]
-                for c in @builds
-                    console.log """
+    printTarget = (name, deps, command) ->
+            """
+            #{name}: #{deps}
+            \t#{command}
 
-                                #{c.product}: #{c.source} #{c.deps * ' '}
-                                \t#{c.command}
-                                """
-
-            if @builds? and @type in [ "reduce" ] 
-                for c in @builds
-                    console.log """
-
-                                #{c.product}: #{c.deps * ' '}
-                                \t#{c.command}
-                                """
-
-            console.log """ 
-                        .PHONY: #{@targetName}
-                        #{@targetName}: #{@products * ' '}
-
-                        """
+            """
 
     iface = { 
-        transcript: (tb) ->
-            for k,v in tb.phonyTargets
-                printPhonyTarget k, v
+        transcript: (f) ->
 
-            for k,v of tb.allTargets
-                printTarget(k, v)
+            for k in f.getPhonyTargetNames!
+                if not f.isPhonyTargetSequential(k)
+                    console.log(printPhonyTarget(k, f.getTargetDepsAsNames(k)))
+                else 
+                    console.log(printPhonySeqTarget(k, f.getTargetDepsAsNames(k))) 
 
-            printCleanTargets tb
+
+            for k in f.getActualTargetNames!
+                console.log printTarget(k, f.getTargetDepsAsNames(k), f.getTargetCreationCommand(k))
 
     }
   

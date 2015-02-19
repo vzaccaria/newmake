@@ -45,3 +45,9 @@ src/plugin.js
 src/screen.js
 src/tree.js
 lib/treeTest.js
+mk
+lib/backends/make.js
+lib/file.js
+lib/packs/web.js
+lib/tree.js
+Thu, 19 Feb 2015 09
