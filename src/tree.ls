@@ -4,6 +4,7 @@ TreeModel = require('tree-model')
 debug     = require('debug')('tree')
 uid       = require('uid')
 _         = require('lodash')
+path      = require('path')
 
 { phony, product, targetStore } = require('./file')
 
@@ -49,6 +50,14 @@ processCollectNode = (node) ->
         @products = _.flatten(@children.map (.products))
         return (new phony(@targetName, @deps, @options))
 
+executeCommand = (tName, c) ->
+    new phony(tName, [] , { +sequential, actions: [ c ] })
+
+processCommandNode = (node) ->
+    let @=node.model
+        return executeCommand(@targetName, @cmd)
+
+
 
 processNode = (node) ->
     let @=node.model
@@ -58,7 +67,8 @@ processNode = (node) ->
           | @type == "reduce"                      => processReduceNode(node)
           | @type == "root"                        => []
           | @type == "collect"                     => processCollectNode(node)
-          | otherwise                              => throw "Invalid type #{@type}"
+          | @type == "command"                     => processCommandNode(node)
+          | otherwise                              => throw "Invalid type `#{@type}`"
         return buildTargets
 
 mapNodes = (r, f) ->
@@ -72,21 +82,13 @@ processNodes = (r) ->
     nodeList = mapNodes(r, processNode)
     return _.flatten(nodeList)
 
-removeFirst = (root, condition) ->
-    x = root.first(condition) 
-    if x? and (x.model.target-name != root.target-name)
-        father = x.parent
-        for c in x.children 
-            father.addChild(c)
-        x.drop()
-        return true
-    else 
-        return false
+forAllProducts = (l, f) ->
+    _.map(_.filter(l, (.constructor.name == 'product')), f)
 
-removeAll = (root, condition) ->
-    do
-        null
-    while removeFirst(root, condition)    
+ensureDirectoryExists = (p) ->
+    new product(path.dirname(p.name), [], "mkdir -p #{path.dirname(p.name)}", [])
+
+
 
 class treeBuilder 
 
@@ -103,6 +105,10 @@ class treeBuilder
         @curNode = savedCurNode 
         newNode.model.children = newNode.children.map (.model)
         return newNode
+
+    cmd: (comm, deps) ~>
+        deps ?= []
+        @curNode.addChild(tree.parse({type: "command", targetName: "k-#{uid(8)}", cmd: comm }))
 
     compileFiles: (cmd, product, src, deps) ~>
         src = [ src ]
@@ -162,7 +168,18 @@ class treeBuilder
 
     createTargetStore: ~>
         @frame = new targetStore()
-        _.map processNodes(@root), @frame.addTarget
+        targets = processNodes(@root)
+        dirs = forAllProducts(targets, ensureDirectoryExists)
+
+        prepare = new phony("prepare", _.map(dirs, (.name)), {} )    
+        actions = forAllProducts targets, ->
+                    "rm #{it.name}"
+        clean = new phony("clean", [] , {
+            sequential: true
+            actions: actions
+        })
+        targets = targets ++ dirs ++ [ prepare ] ++ [ clean ]
+        _.map targets, @frame.addTarget
 
         return @frame
 

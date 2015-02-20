@@ -13,8 +13,7 @@ var {
 
 var f = parse(_ => {
     _.addPack(webPack)
-
-    _.collectSeq("all", _ => {
+    _.collect("all", _ => {
             _.mirrorTo("./lib", {
                 strip: 'src/'
             }, _ => {
@@ -28,7 +27,8 @@ var f = parse(_ => {
             _.toFile("./index.js", _ => {
                 _.livescript("src/index.ls")
             })
-        })
+            _.cmd("cp src/index.js ~/Desktop")
+    })
 })
 
 transcript(f);

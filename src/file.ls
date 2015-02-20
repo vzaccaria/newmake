@@ -33,6 +33,9 @@ class targetStore
     ~>
         @_targets = {}
 
+    ensureTargetIsPhony: (tName) ~>
+        assert(@_targets[tName].constructor.name == 'phony')
+
     addTarget: (target) ~>
         @_targets[target.name] = target
 
@@ -45,8 +48,15 @@ class targetStore
     getTargetDepsAsNames: (tName) ~>
         _.uniq(@_targets[tName].depNames)
 
+    getPhonyTargetActions: (tName) ~>
+        @ensureTargetIsPhony(tName)
+        if @_targets[tName].options?.actions? 
+            return @_targets[tName].options.actions
+        else    
+            return []
+
     isPhonyTargetSequential: (tName) ~>
-        assert(@_targets[tName].constructor.name == 'phony')
+        @ensureTargetIsPhony(tName)
         @_targets[tName].options?.sequential? and @_targets[tName].options.sequential
 
     getTargetCreationCommand: (tName) ~>
