@@ -6,7 +6,7 @@
 parse ->
 
     @add-plugin "es6", (g) ->
-        @compile-files( (-> "6to5 #{it.orig-complete} -o #{it.build-target}" ) , ".js", g)
+        @compile-files( (-> "/usr/local/share/npm/bin/6to5 #{it.orig-complete} -o #{it.build-target}" ) , ".js", g)
 
 
     @collect "build", ->

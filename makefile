@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := all
 
 .build/0-treeTest.js: src/treeTest.js6
-	6to5 src/treeTest.js6 -o .build/0-treeTest.js
+	/usr/local/share/npm/bin/6to5 src/treeTest.js6 -o .build/0-treeTest.js
 
 .build/1-file.js: src/file.ls
 	lsc -p -c src/file.ls > .build/1-file.js
